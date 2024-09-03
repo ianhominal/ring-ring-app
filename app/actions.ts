@@ -24,4 +24,4 @@ export const callRing = async (name: string) => {
       }
 
       return data;
-}
+} 
