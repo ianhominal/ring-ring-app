@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { callRing } from '@/app/actions'
 import { Input } from "@/components/ui/input"
-import { useToast } from '@/hooks/use-toast'
 import { User, Bell } from "lucide-react"
 
 export function Timbre() {
@@ -13,7 +12,6 @@ export function Timbre() {
   const [isHovering, setIsHovering] = useState(false)
   const [isPressed, setIsPressed] = useState(false)
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
-  const { toast } = useToast()
 
   useEffect(() => {
     setCanRing(name.trim().length > 0)
@@ -36,19 +34,9 @@ export function Timbre() {
       try {
         const response = await callRing(name)
         setStatus('success')
-        toast({
-          title: "Timbre sonó",
-          description: `${name}, su visita ha sido anunciada.`,
-          className: "bg-green-100 border-green-500 text-green-800",
-        })
+       
       } catch (error) {
         setStatus('error')
-        toast({
-          title: "Error",
-          description: "No se pudo anunciar la visita. Por favor, intente de nuevo.",
-          variant: "destructive",
-          className: "bg-red-100 border-red-500 text-red-800",
-        })
       } finally {
         setIsRinging(false)
       }
