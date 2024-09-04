@@ -112,7 +112,7 @@ export function Timbre() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-cover">
+    <div className="flex items-center justify-center min-h-screen bg-gray-500 bg-cover">
       <div className="w-full max-w-sm mx-4">
         <div 
           className="relative bg-gradient-to-b from-gray-800 to-gray-900 rounded-lg overflow-hidden border-8 border-gray-700 transition-all duration-500 ease-in-out"
