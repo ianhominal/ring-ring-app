@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { callRing } from '@/app/actions'
 import { Input } from "@/components/ui/input"
 import { User, Bell } from "lucide-react"
+import { getDistanceFromLatLonInKm } from '@/app/utils'
 
 export function Timbre() {
   const [name, setName] = useState('')
@@ -12,10 +13,62 @@ export function Timbre() {
   const [isHovering, setIsHovering] = useState(false)
   const [isPressed, setIsPressed] = useState(false)
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [alreadyRinged, setAlreadyRinged] = useState(false)
+  const [isNearHome, setIsNearHome] = useState(false);
 
   useEffect(() => {
-    setCanRing(name.trim().length > 0)
-  }, [name])
+    // Obtener las coordenadas de casa desde las variables de entorno
+    const homeCoordinates = process.env.NEXT_PUBLIC_HOME_COORDINATES || '0,0';
+    const [homeLatitude, homeLongitude] = homeCoordinates.split(',').map(coord => parseFloat(coord.trim()));
+
+    // Pedir la ubicación del usuario
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const userLatitude = position.coords.latitude;
+          const userLongitude = position.coords.longitude;
+
+          // Calcular la distancia entre el usuario y tu casa
+          const distance = getDistanceFromLatLonInKm(
+            homeLatitude,
+            homeLongitude,
+            userLatitude,
+            userLongitude
+          );
+
+          // Verificar si está dentro de un radio de 500 metros (0.5 km)
+          if (distance <= 0.3) {
+            setIsNearHome(true);
+          } else {
+            setIsNearHome(false);
+          }
+        },
+        (error) => {
+          setStatus('error')
+        }
+      );
+    } else {
+      setStatus('error')//Geolocalización no soportada en este navegador.
+    }
+  }, []);
+
+  useEffect(() => {
+    if(!isNearHome) {
+      setCanRing(false);
+      return;
+    }
+    else{
+      setCanRing(name.trim().length > 0)
+    }
+
+  }, [name, isNearHome])
+
+  useEffect(()=>{
+    if(alreadyRinged)
+    {
+      setCanRing(false)
+    }
+  },[alreadyRinged])
 
   useEffect(() => {
     if (status !== 'idle') {
@@ -34,7 +87,7 @@ export function Timbre() {
       try {
         const response = await callRing(name)
         setStatus('success')
-       
+        setAlreadyRinged(true)
       } catch (error) {
         setStatus('error')
       } finally {
@@ -59,7 +112,7 @@ export function Timbre() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-[url('/brick-wall-background.jpg')] bg-cover">
+    <div className="flex items-center justify-center min-h-screen bg-cover">
       <div className="w-full max-w-sm mx-4">
         <div 
           className="relative bg-gradient-to-b from-gray-800 to-gray-900 rounded-lg overflow-hidden border-8 border-gray-700 transition-all duration-500 ease-in-out"
@@ -178,15 +231,22 @@ export function Timbre() {
           
           {/* Status message */}
           <div className="relative p-4 bg-gradient-to-b from-gray-800 to-gray-900 text-center border-t border-gray-600">
-            <p className="text-sm text-gray-300 font-medium" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
-              {!canRing && 'Ingrese su nombre para tocar el timbre'}
+            <p 
+              className={`text-sm font-medium text-gray-300 ${(!isNearHome || status === 'error') && 'text-red-500'}`} 
+              style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}
+            >
+              {/* Mensajes normales */}
+              {!canRing && !alreadyRinged && isNearHome && 'Ingrese su nombre para tocar el timbre'}
               {canRing && status === 'idle' && !isRinging && 'Presione el botón para anunciar su visita'}
               {isRinging && 'Anunciando su visita...'}
-              {status === 'success' && 'Visita anunciada exitosamente'}
-              {status === 'error' && 'Error al anunciar. Intente de nuevo.'}
+              {status === 'success' && !alreadyRinged && 'Visita anunciada, espere ser atendido'}
+              {/* Mensajes de error en rojo */}
+              {!isNearHome && <span className="text-red-750">Acercate a la casa para tocar el timbre</span>}
+              {status === 'error' && <span className="text-red-750">Error al anunciar. Intente de nuevo.</span>}
+              {/* Mensaje cuando ya ha tocado el timbre */}
+              {!canRing && alreadyRinged && 'Espere a ser atendido'}
             </p>
           </div>
-
           {/* Screws with subtle rotation on hover */}
           {[
             'top-2 left-2', 'top-2 right-2', 'bottom-2 left-2', 'bottom-2 right-2'
